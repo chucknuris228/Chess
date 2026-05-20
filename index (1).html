@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GrandMaster – Chess Platform</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0a0a0f;--bg2:#111118;--bg3:#1a1a24;--bg4:#22222e;
+    --gold:#c9a84c;--gold2:#e8c97a;--gold3:#f5e0a0;
+    --text:#f0ede6;--text2:#a09d96;--text3:#6b6860;
+    --green:#2d7a4a;--green2:#3a9c5e;--red:#8b2a2a;--blue:#2a4a8b;
+    --light-sq:#f0d9b5;--dark-sq:#b58863;
+    --highlight:#f6f669;--highlight2:#cdd16f;
+    --selected:#7fc97f;--move-dot:rgba(0,0,0,0.2);
+    --radius:8px;--transition:0.2s ease;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+  nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:60px;background:var(--bg2);border-bottom:1px solid rgba(201,168,76,0.15);position:sticky;top:0;z-index:100}
+  .logo{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,var(--gold),var(--gold3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .nav-links{display:flex;gap:0.25rem}
+  .nav-btn{background:none;border:none;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:0.4rem 0.85rem;border-radius:6px;cursor:pointer;transition:var(--transition)}
+  .nav-btn:hover{color:var(--text);background:var(--bg3)}
+  .nav-btn.active{color:var(--gold);background:rgba(201,168,76,0.1)}
+  .pro-btn{background:linear-gradient(135deg,var(--gold),#a07830)!important;color:#1a1200!important;font-weight:600;border-radius:6px;padding:0.4rem 1rem;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;font-size:0.85rem;transition:var(--transition)}
+  .pro-btn:hover{opacity:0.9;transform:translateY(-1px)}
+  .page{display:none;min-height:calc(100vh - 60px)}
+  .page.active{display:block}
+  #play-page{display:none;padding:1.5rem 2rem}
+  #play-page.active{display:grid;grid-template-columns:auto 1fr auto;gap:1.5rem;align-items:start}
+  .board-section{display:flex;flex-direction:column;align-items:center;gap:0.75rem}
+  .player-bar{display:flex;align-items:center;gap:0.75rem;width:100%;padding:0.6rem 0.75rem;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--bg4)}
+  .player-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem}
+  .avatar-white{background:rgba(240,230,200,0.15);color:var(--gold2);border:1px solid rgba(201,168,76,0.3)}
+  .avatar-black{background:rgba(30,30,40,0.8);color:var(--text2);border:1px solid var(--bg4)}
+  .player-name{font-weight:500;font-size:0.9rem}
+  .player-rating{font-size:0.75rem;color:var(--text3);margin-left:auto}
+  .player-time{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;margin-left:0.5rem;color:var(--gold)}
+  .captured-pieces{font-size:0.8rem;letter-spacing:-1px;min-height:16px}
+  .material-adv{font-size:0.75rem;color:var(--gold);font-weight:600;margin-left:4px}
+  .board-wrapper{position:relative;user-select:none}
+  .coords-wrap{display:flex;align-items:center}
+  .rank-coords{display:flex;flex-direction:column;justify-content:space-around;width:18px;height:480px;padding:2px 0}
+  .rank-coord{font-size:0.65rem;color:var(--text3);text-align:center}
+  .board-and-files{display:flex;flex-direction:column}
+  .chessboard{display:grid;grid-template-columns:repeat(8,1fr);width:480px;height:480px;border:2px solid rgba(201,168,76,0.3);border-radius:4px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+  .file-coords{display:flex;justify-content:space-around;padding:3px 0;width:480px}
+  .file-coord{font-size:0.65rem;color:var(--text3);text-align:center;width:60px}
+  .square{width:60px;height:60px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:filter 0.1s}
+  .square.light{background:var(--light-sq)}.square.dark{background:var(--dark-sq)}
+  .square.selected{background:var(--selected)!important}
+  .square.valid-move::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:var(--move-dot);pointer-events:none}
+  .square.valid-capture{box-shadow:inset 0 0 0 4px rgba(0,0,0,0.25)}
+  .square.last-move-from,.square.last-move-to{background:var(--highlight2)!important}
+  .square.check-king{background:#e84040!important}
+  .square:hover:not(.selected){filter:brightness(1.08)}
+  .piece{font-size:38px;line-height:1;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.4))}
+  .controls{display:flex;flex-direction:column;gap:0.5rem}
+  .ctrl-row{display:flex;gap:0.4rem}
+  .ctrl-btn{background:var(--bg3);border:1px solid var(--bg4);color:var(--text2);font-size:0.8rem;padding:0.4rem 0.7rem;border-radius:6px;cursor:pointer;transition:var(--transition);font-family:'DM Sans',sans-serif}
+  .ctrl-btn:hover{color:var(--text);border-color:rgba(201,168,76,0.3)}
+  .ctrl-btn.primary{background:var(--green);border-color:var(--green2);color:#fff}
+  .ctrl-btn.danger{background:var(--red);border-color:#a03030;color:#fff}
+  .side-panel{width:280px;display:flex;flex-direction:column;gap:1rem}
+  .panel-card{background:var(--bg2);border:1px solid var(--bg3);border-radius:var(--radius);overflow:hidden}
+  .panel-card-header{padding:0.75rem 1rem;border-bottom:1px solid var(--bg3);font-size:0.8rem;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:0.05em}
+  .panel-card-body{padding:0.75rem 1rem}
+  .setup-section{padding:1rem;display:flex;flex-direction:column;gap:0.75rem}
+  .setup-label{font-size:0.75rem;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:0.3rem}
+  .mode-btns{display:flex;gap:0.4rem;flex-wrap:wrap}
+  .mode-btn{background:var(--bg3);border:1px solid var(--bg4);color:var(--text2);font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:6px;cursor:pointer;transition:var(--transition);font-family:'DM Sans',sans-serif}
+  .mode-btn:hover,.mode-btn.active{color:var(--gold);border-color:rgba(201,168,76,0.5);background:rgba(201,168,76,0.08)}
+  .difficulty-slider{width:100%;accent-color:var(--gold)}
+  .start-game-btn{background:linear-gradient(135deg,var(--gold),#a07830);color:#1a1200;font-weight:700;font-size:0.95rem;padding:0.7rem;border:none;border-radius:var(--radius);cursor:pointer;font-family:'DM Sans',sans-serif;transition:var(--transition)}
+  .start-game-btn:hover{opacity:0.9;transform:translateY(-1px)}
+  .move-history{max-height:220px;overflow-y:auto;font-size:0.82rem}
+  .move-history::-webkit-scrollbar{width:4px}
+  .move-history::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px}
+  .move-pair{display:flex;align-items:center;gap:0.4rem;padding:0.25rem 0.5rem;border-radius:4px}
+  .move-pair:hover{background:var(--bg3)}
+  .move-num{color:var(--text3);min-width:22px;font-size:0.75rem}
+  .move-san{padding:2px 6px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace;font-size:0.8rem}
+  .move-san:hover{background:rgba(201,168,76,0.1);color:var(--gold)}
+  .move-san.current{background:rgba(201,168,76,0.15);color:var(--gold2)}
+  .analysis-box{background:var(--bg3);border-radius:6px;padding:0.75rem;font-size:0.82rem;line-height:1.6;color:var(--text2);min-height:80px;border-left:3px solid rgba(201,168,76,0.4)}
+  .eval-bar-wrap{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem}
+  .eval-bar{height:8px;border-radius:4px;background:var(--bg4);flex:1;overflow:hidden}
+  .eval-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:4px;transition:width 0.5s ease}
+  .eval-text{font-size:0.75rem;color:var(--gold);font-weight:600;min-width:36px;text-align:right}
+  #leaderboard-page{display:none;padding:2rem}
+  #leaderboard-page.active{display:block}
+  .lb-header{text-align:center;margin-bottom:2.5rem}
+  .lb-title{font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;background:linear-gradient(135deg,var(--gold),var(--gold3));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .lb-sub{color:var(--text3);font-size:0.9rem;margin-top:0.4rem}
+  .lb-filters{display:flex;gap:0.5rem;justify-content:center;margin-bottom:1.5rem;flex-wrap:wrap}
+  .lb-filter-btn{background:var(--bg3);border:1px solid var(--bg4);color:var(--text2);padding:0.4rem 1rem;border-radius:20px;cursor:pointer;font-size:0.82rem;font-family:'DM Sans',sans-serif;transition:var(--transition)}
+  .lb-filter-btn.active{background:rgba(201,168,76,0.15);border-color:rgba(201,168,76,0.5);color:var(--gold)}
+  .lb-table{width:100%;max-width:800px;margin:0 auto;border-collapse:collapse}
+  .lb-table th{text-align:left;padding:0.6rem 1rem;font-size:0.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--bg3)}
+  .lb-table td{padding:0.7rem 1rem;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.88rem}
+  .lb-rank{font-family:'Playfair Display',serif;font-weight:700;font-size:1rem}
+  .rank-1{color:#ffd700}.rank-2{color:#c0c0c0}.rank-3{color:#cd7f32}
+  .lb-player{display:flex;align-items:center;gap:0.75rem}
+  .lb-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;border:1px solid var(--bg4)}
+  .lb-rating{font-weight:600;color:var(--gold2)}
+  .lb-city{font-size:0.78rem;color:var(--text3)}
+  .lb-streak{color:var(--green2);font-size:0.8rem}
+  .lb-row:hover td{background:rgba(255,255,255,0.02)}
+  #home-page{padding:2rem}
+  #home-page.active{display:block}
+  .hero{text-align:center;padding:3rem 1rem 2rem}
+  .hero-title{font-family:'Playfair Display',serif;font-size:3.5rem;font-weight:900;line-height:1.1;background:linear-gradient(135deg,var(--gold),var(--gold3),var(--text));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .hero-sub{color:var(--text2);font-size:1.1rem;margin:1rem auto;max-width:500px;line-height:1.6}
+  .hero-cta{display:flex;gap:1rem;justify-content:center;margin-top:2rem;flex-wrap:wrap}
+  .btn-primary{background:linear-gradient(135deg,var(--gold),#a07830);color:#1a1200;font-weight:700;font-size:1rem;padding:0.8rem 2rem;border:none;border-radius:var(--radius);cursor:pointer;font-family:'DM Sans',sans-serif;transition:var(--transition)}
+  .btn-primary:hover{transform:translateY(-2px);opacity:0.9}
+  .btn-secondary{background:var(--bg3);color:var(--text);font-weight:500;font-size:1rem;padding:0.8rem 2rem;border:1px solid var(--bg4);border-radius:var(--radius);cursor:pointer;font-family:'DM Sans',sans-serif;transition:var(--transition)}
+  .btn-secondary:hover{border-color:rgba(201,168,76,0.4);color:var(--gold)}
+  .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.5rem;max-width:900px;margin:3rem auto 0;padding:0 1rem}
+  .feature-card{background:var(--bg2);border:1px solid var(--bg3);border-radius:var(--radius);padding:1.5rem;transition:var(--transition)}
+  .feature-card:hover{border-color:rgba(201,168,76,0.25);transform:translateY(-3px)}
+  .feature-icon{font-size:1.8rem;margin-bottom:0.75rem}
+  .feature-title{font-weight:600;font-size:1rem;margin-bottom:0.4rem;color:var(--gold2)}
+  .feature-desc{font-size:0.85rem;color:var(--text3);line-height:1.6}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+  .modal-overlay.hidden{display:none}
+  .modal{background:var(--bg2);border:1px solid rgba(201,168,76,0.2);border-radius:16px;padding:2rem;max-width:400px;width:90%;text-align:center}
+  .modal-icon{font-size:3rem;margin-bottom:1rem}
+  .modal-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;margin-bottom:0.5rem;color:var(--gold2)}
+  .modal-sub{color:var(--text3);font-size:0.9rem;margin-bottom:1.5rem;line-height:1.6}
+  .modal-btns{display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap}
+  .modal-btn{padding:0.6rem 1.5rem;border-radius:var(--radius);cursor:pointer;font-weight:600;font-family:'DM Sans',sans-serif;font-size:0.9rem;transition:var(--transition);border:none}
+  .modal-btn.primary{background:linear-gradient(135deg,var(--gold),#a07830);color:#1a1200}
+  .modal-btn.secondary{background:var(--bg3);color:var(--text);border:1px solid var(--bg4)}
+  .modal-btn:hover{opacity:0.85;transform:translateY(-1px)}
+  .coach-message{background:linear-gradient(135deg,rgba(201,168,76,0.08),rgba(201,168,76,0.03));border:1px solid rgba(201,168,76,0.15);border-radius:var(--radius);padding:0.75rem;margin-top:0.5rem;font-size:0.83rem;line-height:1.6;color:var(--text2)}
+  .coach-header{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;color:var(--gold);font-weight:600;font-size:0.8rem}
+  .game-status{text-align:center;padding:0.4rem;font-size:0.82rem;font-weight:500;border-radius:4px;min-height:28px}
+  .status-playing{color:var(--green2)}.status-check{color:#ff9944;animation:pulse 1s infinite}.status-over{color:var(--gold);font-weight:700}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+  .pro-features{list-style:none;text-align:left;margin:1rem 0;display:flex;flex-direction:column;gap:0.4rem}
+  .pro-features li{display:flex;align-items:center;gap:0.5rem;font-size:0.88rem;color:var(--text2)}
+  .pro-features li::before{content:'✦';color:var(--gold);font-size:0.7rem}
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem}
+  .stat-item{background:var(--bg3);border-radius:6px;padding:0.6rem 0.75rem;text-align:center}
+  .stat-val{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--gold2)}
+  .stat-lbl{font-size:0.7rem;color:var(--text3);margin-top:2px}
+  .link-box{display:flex;gap:0.4rem;margin-top:0.5rem}
+  .link-input{flex:1;background:var(--bg3);border:1px solid var(--bg4);color:var(--text);padding:0.4rem 0.6rem;border-radius:6px;font-size:0.78rem;font-family:'DM Mono',monospace}
+  .copy-btn{background:var(--bg4);border:1px solid rgba(201,168,76,0.2);color:var(--gold);padding:0.4rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.78rem;font-family:'DM Sans',sans-serif;transition:var(--transition)}
+  .copy-btn:hover{background:rgba(201,168,76,0.1)}
+  .toast{position:fixed;bottom:2rem;right:2rem;background:var(--bg2);border:1px solid rgba(201,168,76,0.3);color:var(--text);padding:0.7rem 1.25rem;border-radius:var(--radius);font-size:0.85rem;z-index:999;opacity:0;transform:translateY(10px);transition:all 0.3s}
+  .toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">♛ GrandMaster</div>
+  <div class="nav-links">
+    <button class="nav-btn active" onclick="showPage('home')">Home</button>
+    <button class="nav-btn" onclick="showPage('play')">Play</button>
+    <button class="nav-btn" onclick="showPage('leaderboard')">Leaderboard</button>
+  </div>
+  <button class="pro-btn" onclick="showProModal()">✦ Upgrade Pro</button>
+</nav>
+
+<div id="home-page" class="page active">
+  <div class="hero">
+    <div class="hero-title">Chess, Reimagined<br>for the Modern Mind</div>
+    <div class="hero-sub">Play against AI, challenge friends, get coached by AI, and climb the global leaderboard — all in one elegant platform.</div>
+    <div class="hero-cta">
+      <button class="btn-primary" onclick="showPage('play')">Play Now</button>
+      <button class="btn-secondary" onclick="showPage('leaderboard')">View Rankings</button>
+    </div>
+  </div>
+  <div class="features">
+    <div class="feature-card"><div class="feature-icon">🤖</div><div class="feature-title">AI Opponents</div><div class="feature-desc">Face off against AI at 8 difficulty levels — from beginner friendly to grandmaster crushing using minimax + alpha-beta pruning.</div></div>
+    <div class="feature-card"><div class="feature-icon">🧠</div><div class="feature-title">AI Coach</div><div class="feature-desc">After each game, our AI coach analyzes your mistakes and teaches you how to improve specific moves.</div></div>
+    <div class="feature-card"><div class="feature-icon">🔗</div><div class="feature-title">Multiplayer Links</div><div class="feature-desc">Share a link to challenge any friend instantly. No account required for challengers.</div></div>
+    <div class="feature-card"><div class="feature-icon">🏆</div><div class="feature-title">City Leaderboards</div><div class="feature-desc">Compete with players in your city. Almaty, Nur-Sultan, Shymkent — rise to the top of your region.</div></div>
+  </div>
+</div>
+
+<div id="play-page" class="page">
+  <div class="side-panel">
+    <div class="panel-card">
+      <div class="panel-card-header">Game Setup</div>
+      <div class="setup-section">
+        <div>
+          <div class="setup-label">Mode</div>
+          <div class="mode-btns">
+            <button class="mode-btn active" onclick="setMode('ai',this)">vs AI</button>
+            <button class="mode-btn" onclick="setMode('human',this)">vs Human</button>
+            <button class="mode-btn" onclick="setMode('link',this)">By Link</button>
+          </div>
+        </div>
+        <div id="ai-settings">
+          <div class="setup-label">AI Difficulty: <span id="diff-label">Level 4</span></div>
+          <input class="difficulty-slider" type="range" min="1" max="8" value="4" id="difficulty" oninput="document.getElementById('diff-label').textContent='Level '+this.value">
+        </div>
+        <div>
+          <div class="setup-label">Time Control</div>
+          <div class="mode-btns">
+            <button class="mode-btn active" onclick="setTime(0,this)">∞</button>
+            <button class="mode-btn" onclick="setTime(60,this)">1 min</button>
+            <button class="mode-btn" onclick="setTime(180,this)">3 min</button>
+            <button class="mode-btn" onclick="setTime(600,this)">10 min</button>
+          </div>
+        </div>
+        <button class="start-game-btn" onclick="startNewGame()">⚡ New Game</button>
+        <div id="link-section" style="display:none">
+          <div class="setup-label">Share to challenge:</div>
+          <div class="link-box">
+            <input class="link-input" id="game-link" readonly value="grandmaster.app/g/xyz7k2">
+            <button class="copy-btn" onclick="copyLink()">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-card">
+      <div class="panel-card-header">Move History</div>
+      <div class="panel-card-body" style="padding:0.5rem">
+        <div class="move-history" id="move-history"></div>
+      </div>
+    </div>
+    <div class="panel-card">
+      <div class="panel-card-header">Your Stats</div>
+      <div class="panel-card-body">
+        <div class="stats-grid">
+          <div class="stat-item"><div class="stat-val" id="stat-wins">0</div><div class="stat-lbl">Wins</div></div>
+          <div class="stat-item"><div class="stat-val" id="stat-losses">0</div><div class="stat-lbl">Losses</div></div>
+          <div class="stat-item"><div class="stat-val" id="stat-rating">1200</div><div class="stat-lbl">Rating</div></div>
+          <div class="stat-item"><div class="stat-val" id="stat-games">0</div><div class="stat-lbl">Games</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="board-section">
+    <div class="player-bar">
+      <div class="player-avatar avatar-black">♟</div>
+      <div><div class="player-name" id="black-name">AI Opponent</div><div class="captured-pieces" id="white-captured"></div></div>
+      <div class="player-rating" id="black-rating">1800</div>
+      <div class="player-time" id="black-time"></div>
+    </div>
+    <div class="board-wrapper">
+      <div class="coords-wrap">
+        <div class="rank-coords" id="rank-coords"></div>
+        <div class="board-and-files">
+          <div class="chessboard" id="chessboard"></div>
+          <div class="file-coords" id="file-coords"></div>
+        </div>
+      </div>
+    </div>
+    <div class="player-bar">
+      <div class="player-avatar avatar-white">♙</div>
+      <div><div class="player-name">You (White)</div><div class="captured-pieces" id="black-captured"></div></div>
+      <div class="player-rating">1200</div>
+      <div class="player-time" id="white-time"></div>
+    </div>
+    <div class="game-status status-playing" id="game-status">White to move</div>
+    <div class="controls">
+      <div class="ctrl-row">
+        <button class="ctrl-btn" onclick="flipBoard()">⇅ Flip</button>
+        <button class="ctrl-btn" onclick="undoMove()">← Undo</button>
+        <button class="ctrl-btn danger" onclick="resignGame()">⚑ Resign</button>
+        <button class="ctrl-btn primary" onclick="startNewGame()">↺ New</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="side-panel">
+    <div class="panel-card">
+      <div class="panel-card-header">Evaluation</div>
+      <div class="panel-card-body">
+        <div class="eval-bar-wrap">
+          <div style="font-size:0.75rem;color:var(--text3);min-width:14px">♟</div>
+          <div class="eval-bar"><div class="eval-fill" id="eval-fill" style="width:50%"></div></div>
+          <div style="font-size:0.75rem;color:var(--text3);min-width:14px">♙</div>
+          <div class="eval-text" id="eval-text">0.0</div>
+        </div>
+        <div class="analysis-box" id="analysis-box">Start a game to see position evaluation and best moves.</div>
+      </div>
+    </div>
+    <div class="panel-card">
+      <div class="panel-card-header">♛ AI Coach</div>
+      <div class="panel-card-body">
+        <div style="font-size:0.82rem;color:var(--text3);margin-bottom:0.5rem">Play at least 5 moves for a coaching session after the game.</div>
+        <div class="coach-message" id="coach-box"><div class="coach-header"><span>✦</span> Coach Tip</div>Control the center with pawns early. e4 and d4 are classic opening moves.</div>
+        <button class="ctrl-btn" style="width:100%;margin-top:0.5rem;text-align:center" onclick="analyzeWithAI()">🔍 Analyze Game</button>
+      </div>
+    </div>
+    <div class="panel-card">
+      <div class="panel-card-header">✦ Pro Features</div>
+      <div class="panel-card-body">
+        <div style="font-size:0.82rem;color:var(--text3);line-height:1.6;margin-bottom:0.75rem">Unlock unlimited AI coaching, custom piece skins, voice commentary, and priority matchmaking.</div>
+        <button class="pro-btn" style="width:100%" onclick="showProModal()">✦ Upgrade to Pro – $9/mo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="leaderboard-page" class="page">
+  <div class="lb-header">
+    <div class="lb-title">Global Rankings</div>
+    <div class="lb-sub">Top chess players from Kazakhstan and beyond</div>
+  </div>
+  <div class="lb-filters">
+    <button class="lb-filter-btn active" onclick="filterLB('global',this)">🌍 Global</button>
+    <button class="lb-filter-btn" onclick="filterLB('almaty',this)">📍 Almaty</button>
+    <button class="lb-filter-btn" onclick="filterLB('nur-sultan',this)">📍 Nur-Sultan</button>
+    <button class="lb-filter-btn" onclick="filterLB('shymkent',this)">📍 Shymkent</button>
+    <button class="lb-filter-btn" onclick="filterLB('weekly',this)">📅 This Week</button>
+  </div>
+  <table class="lb-table">
+    <thead><tr><th style="width:50px">#</th><th>Player</th><th>City</th><th>Rating</th><th>Wins</th><th>Streak</th></tr></thead>
+    <tbody id="lb-body"></tbody>
+  </table>
+</div>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-icon" id="modal-icon">♛</div>
+    <div class="modal-title" id="modal-title">Game Over</div>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div class="modal-btns" id="modal-btns"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const PIECES={wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'};
+const PIECE_VALUES={P:1,N:3,B:3,R:5,Q:9,K:0};
+let state={board:null,turn:'w',selected:null,validMoves:[],moveHistory:[],capturedByWhite:[],capturedByBlack:[],castling:{wK:true,wQ:true,bK:true,bQ:true},enPassant:null,halfmove:0,gameOver:false,flipped:false,mode:'ai',difficulty:4,timeControl:0,whiteTime:0,blackTime:0,timerInterval:null,wins:0,losses:0,rating:1200,games:0,lastFrom:null,lastTo:null,checkKing:null,aiThinking:false};
+
+function initBoard(){const b=Array(8).fill(null).map(()=>Array(8).fill(null));const back=['R','N','B','Q','K','B','N','R'];for(let c=0;c<8;c++){b[0][c]='b'+back[c];b[1][c]='bP';b[6][c]='wP';b[7][c]='w'+back[c]}return b}
+function inBounds(r,c){return r>=0&&r<8&&c>=0&&c<8}
+function pieceColor(p){return p?p[0]:null}
+function pieceType(p){return p?p[1]:null}
+
+function getValidMoves(board,r,c,castling,enPassant,turn){
+  const p=board[r][c];if(!p||p[0]!==turn)return[];
+  const t=p[1],color=p[0],opp=color==='w'?'b':'w';const moves=[];
+  const add=(nr,nc,special)=>{if(inBounds(nr,nc))moves.push({r:nr,c:nc,...(special||{})})};
+  if(t==='P'){const dir=color==='w'?-1:1,startRow=color==='w'?6:1;if(inBounds(r+dir,c)&&!board[r+dir][c]){add(r+dir,c);if(r===startRow&&!board[r+2*dir][c])add(r+2*dir,c,{doublePush:true})}for(const dc of[-1,1]){if(inBounds(r+dir,c+dc)){if(board[r+dir][c+dc]&&board[r+dir][c+dc][0]===opp)add(r+dir,c+dc);else if(enPassant&&enPassant.r===r+dir&&enPassant.c===c+dc)add(r+dir,c+dc,{enPassant:true})}}}
+  else if(t==='N'){for(const[dr,dc]of[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]){const nr=r+dr,nc=c+dc;if(inBounds(nr,nc)&&pieceColor(board[nr][nc])!==color)add(nr,nc)}}
+  else if(t==='K'){for(const[dr,dc]of[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]){const nr=r+dr,nc=c+dc;if(inBounds(nr,nc)&&pieceColor(board[nr][nc])!==color)add(nr,nc)}const row=color==='w'?7:0;if(r===row&&c===4){if(castling[color+'K']&&!board[row][5]&&!board[row][6]&&!isSquareAttacked(board,row,4,opp)&&!isSquareAttacked(board,row,5,opp)&&!isSquareAttacked(board,row,6,opp))add(row,6,{castle:'K'});if(castling[color+'Q']&&!board[row][3]&&!board[row][2]&&!board[row][1]&&!isSquareAttacked(board,row,4,opp)&&!isSquareAttacked(board,row,3,opp)&&!isSquareAttacked(board,row,2,opp))add(row,2,{castle:'Q'})}}
+  else{const dirs=t==='R'?[[0,1],[0,-1],[1,0],[-1,0]]:t==='B'?[[1,1],[1,-1],[-1,1],[-1,-1]]:[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];for(const[dr,dc]of dirs){let nr=r+dr,nc=c+dc;while(inBounds(nr,nc)){if(board[nr][nc]){if(board[nr][nc][0]===opp)add(nr,nc);break}add(nr,nc);nr+=dr;nc+=dc}}}
+  return moves.filter(m=>{const nb=applyMoveToBoard(board,r,c,m);return!isKingInCheck(nb,color)});
+}
+
+function applyMoveToBoard(board,fr,fc,move){const nb=board.map(r=>[...r]);const p=nb[fr][fc];nb[move.r][move.c]=p;nb[fr][fc]=null;if(move.enPassant)nb[fr][move.c]=null;if(move.castle==='K'){nb[move.r][5]=nb[move.r][7];nb[move.r][7]=null}if(move.castle==='Q'){nb[move.r][3]=nb[move.r][0];nb[move.r][0]=null}if(pieceType(p)==='P'&&(move.r===0||move.r===7))nb[move.r][move.c]=p[0]+'Q';return nb}
+
+function findKing(board,color){for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c]===color+'K')return[r,c];return null}
+
+function isSquareAttacked(board,tr,tc,byColor){
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(!p||p[0]!==byColor)continue;const t=p[1];
+  if(t==='P'){const dir=byColor==='w'?-1:1;if(r+dir===tr&&Math.abs(c-tc)===1)return true}
+  else if(t==='N'){const dr=Math.abs(r-tr),dc=Math.abs(c-tc);if((dr===2&&dc===1)||(dr===1&&dc===2))return true}
+  else if(t==='K'){if(Math.abs(r-tr)<=1&&Math.abs(c-tc)<=1)return true}
+  else{const dirs=t==='R'?[[0,1],[0,-1],[1,0],[-1,0]]:t==='B'?[[1,1],[1,-1],[-1,1],[-1,-1]]:[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];for(const[dr,dc]of dirs){let nr=r+dr,nc=c+dc;while(inBounds(nr,nc)){if(nr===tr&&nc===tc)return true;if(board[nr][nc])break;nr+=dr;nc+=dc}}}}return false}
+
+function isKingInCheck(board,color){const k=findKing(board,color);if(!k)return false;return isSquareAttacked(board,k[0],k[1],color==='w'?'b':'w')}
+function hasAnyMoves(board,color,castling,enPassant){for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c]&&board[r][c][0]===color&&getValidMoves(board,r,c,castling,enPassant,color).length>0)return true;return false}
+
+const PST={P:[[0,0,0,0,0,0,0,0],[50,50,50,50,50,50,50,50],[10,10,20,30,30,20,10,10],[5,5,10,25,25,10,5,5],[0,0,0,20,20,0,0,0],[5,-5,-10,0,0,-10,-5,5],[5,10,10,-20,-20,10,10,5],[0,0,0,0,0,0,0,0]],N:[[-50,-40,-30,-30,-30,-30,-40,-50],[-40,-20,0,0,0,0,-20,-40],[-30,0,10,15,15,10,0,-30],[-30,5,15,20,20,15,5,-30],[-30,0,15,20,20,15,0,-30],[-30,5,10,15,15,10,5,-30],[-40,-20,0,5,5,0,-20,-40],[-50,-40,-30,-30,-30,-30,-40,-50]],B:[[-20,-10,-10,-10,-10,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,5,10,10,5,0,-10],[-10,5,5,10,10,5,5,-10],[-10,0,10,10,10,10,0,-10],[-10,10,10,10,10,10,10,-10],[-10,5,0,0,0,0,5,-10],[-20,-10,-10,-10,-10,-10,-10,-20]],R:[[0,0,0,0,0,0,0,0],[5,10,10,10,10,10,10,5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[-5,0,0,0,0,0,0,-5],[0,0,0,5,5,0,0,0]],Q:[[-20,-10,-10,-5,-5,-10,-10,-20],[-10,0,0,0,0,0,0,-10],[-10,0,5,5,5,5,0,-10],[-5,0,5,5,5,5,0,-5],[0,0,5,5,5,5,0,-5],[-10,5,5,5,5,5,0,-10],[-10,0,5,0,0,0,0,-10],[-20,-10,-10,-5,-5,-10,-10,-20]],K:[[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-30,-40,-40,-50,-50,-40,-40,-30],[-20,-30,-30,-40,-40,-30,-30,-20],[-10,-20,-20,-20,-20,-20,-20,-10],[20,20,0,0,0,0,20,20],[20,30,10,0,0,10,30,20]]};
+
+function evalBoard(board){let score=0;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=board[r][c];if(!p)continue;const t=pieceType(p),color=p[0];const val=(PIECE_VALUES[t]||0)*100;const pst=PST[t]?PST[t][color==='w'?r:7-r][c]:0;score+=(color==='w'?1:-1)*(val+pst)}return score}
+
+function getAllMoves(board,color,castling,enPassant){const moves=[];for(let r=0;r<8;r++)for(let c=0;c<8;c++)if(board[r][c]&&board[r][c][0]===color){const vm=getValidMoves(board,r,c,castling,enPassant,color);vm.forEach(m=>moves.push({fr:r,fc:c,move:m}))}return moves}
+
+function minimax(board,depth,alpha,beta,maximizing,castling,enPassant){const color=maximizing?'b':'w';const moves=getAllMoves(board,color,castling,enPassant);if(depth===0||moves.length===0)return evalBoard(board);if(maximizing){let best=-Infinity;for(const{fr,fc,move}of moves){const nb=applyMoveToBoard(board,fr,fc,move);const val=minimax(nb,depth-1,alpha,beta,false,castling,enPassant);best=Math.max(best,val);alpha=Math.max(alpha,val);if(beta<=alpha)break}return best}else{let best=Infinity;for(const{fr,fc,move}of moves){const nb=applyMoveToBoard(board,fr,fc,move);const val=minimax(nb,depth-1,alpha,beta,true,castling,enPassant);best=Math.min(best,val);beta=Math.min(beta,val);if(beta<=alpha)break}return best}}
+
+function getAIMove(board,difficulty,castling,enPassant){const depth=Math.min(difficulty<=2?1:difficulty<=4?2:difficulty<=6?3:4,4);const moves=getAllMoves(board,'b',castling,enPassant);if(!moves.length)return null;const noise=Math.max(0,(5-difficulty)*50);let best=-Infinity,bestMove=null;for(const{fr,fc,move}of moves){const nb=applyMoveToBoard(board,fr,fc,move);let val=minimax(nb,depth-1,-Infinity,Infinity,false,castling,enPassant);val+=noise*(Math.random()-0.5);if(val>best){best=val;bestMove={fr,fc,move}}}return bestMove}
+
+function startNewGame(){clearInterval(state.timerInterval);state.board=initBoard();state.turn='w';state.selected=null;state.validMoves=[];state.moveHistory=[];state.capturedByWhite=[];state.capturedByBlack=[];state.castling={wK:true,wQ:true,bK:true,bQ:true};state.enPassant=null;state.halfmove=0;state.gameOver=false;state.lastFrom=null;state.lastTo=null;state.checkKing=null;state.aiThinking=false;if(state.timeControl>0){state.whiteTime=state.timeControl;state.blackTime=state.timeControl;startTimer()}else{state.whiteTime=0;state.blackTime=0}renderBoard();renderHistory();updateStatus();updateEval();document.getElementById('coach-box').innerHTML='<div class="coach-header"><span>✦</span> Coach Tip</div>Control the center with pawns early. e4 and d4 are classic opening moves.'}
+
+function startTimer(){clearInterval(state.timerInterval);state.timerInterval=setInterval(()=>{if(state.gameOver)return;if(state.turn==='w')state.whiteTime--;else state.blackTime--;if(state.whiteTime<=0||state.blackTime<=0){const winner=state.whiteTime<=0?'Black':'White';endGame(winner+' wins on time!','⏰')}updateTimers()},1000)}
+
+function updateTimers(){const fmt=t=>{if(t<=0)return'0:00';const m=Math.floor(t/60),s=t%60;return m+':'+(s<10?'0':'')+s};document.getElementById('white-time').textContent=state.timeControl>0?fmt(state.whiteTime):'';document.getElementById('black-time').textContent=state.timeControl>0?fmt(state.blackTime):''}
+
+function renderBoard(){const board=document.getElementById('chessboard');board.innerHTML='';const files='abcdefgh';const rc=document.getElementById('rank-coords');rc.innerHTML='';for(let r=0;r<8;r++){const d=document.createElement('div');d.className='rank-coord';d.textContent=state.flipped?r+1:8-r;rc.appendChild(d)}const fc=document.getElementById('file-coords');fc.innerHTML='';for(let c=0;c<8;c++){const d=document.createElement('div');d.className='file-coord';d.textContent=state.flipped?files[7-c]:files[c];fc.appendChild(d)}for(let row=0;row<8;row++)for(let col=0;col<8;col++){const r=state.flipped?7-row:row,c=state.flipped?7-col:col;const sq=document.createElement('div');sq.className='square '+((r+c)%2===0?'light':'dark');sq.dataset.r=r;sq.dataset.c=c;if(state.selected&&state.selected[0]===r&&state.selected[1]===c)sq.classList.add('selected');if(state.lastFrom&&state.lastFrom[0]===r&&state.lastFrom[1]===c)sq.classList.add('last-move-from');if(state.lastTo&&state.lastTo[0]===r&&state.lastTo[1]===c)sq.classList.add('last-move-to');if(state.checkKing&&state.checkKing[0]===r&&state.checkKing[1]===c)sq.classList.add('check-king');const isValid=state.validMoves.some(m=>m.r===r&&m.c===c);if(isValid){if(state.board[r][c])sq.classList.add('valid-capture');else sq.classList.add('valid-move')}const p=state.board[r][c];if(p){const span=document.createElement('span');span.className='piece';span.textContent=PIECES[p];sq.appendChild(span)}sq.addEventListener('click',()=>handleSquareClick(r,c));board.appendChild(sq)}document.getElementById('white-captured').innerHTML=state.capturedByWhite.map(p=>PIECES['b'+p]).join('')+(state.capturedByWhite.length?'<span class="material-adv">+'+calcAdvantage('w')+'</span>':'');document.getElementById('black-captured').innerHTML=state.capturedByBlack.map(p=>PIECES['w'+p]).join('')+(state.capturedByBlack.length?'<span class="material-adv">+'+calcAdvantage('b')+'</span>':'')}
+
+function calcAdvantage(color){const vals={P:1,N:3,B:3,R:5,Q:9};const captured=color==='w'?state.capturedByWhite:state.capturedByBlack;const oppCaptured=color==='w'?state.capturedByBlack:state.capturedByWhite;const mine=captured.reduce((s,p)=>s+(vals[p]||0),0);const theirs=oppCaptured.reduce((s,p)=>s+(vals[p]||0),0);return Math.max(0,mine-theirs)}
+
+function handleSquareClick(r,c){if(state.gameOver||state.aiThinking)return;if(state.mode==='ai'&&state.turn==='b')return;const p=state.board[r][c];if(state.selected){const move=state.validMoves.find(m=>m.r===r&&m.c===c);if(move){applyMove(state.selected[0],state.selected[1],move);return}if(p&&p[0]===state.turn){state.selected=[r,c];state.validMoves=getValidMoves(state.board,r,c,state.castling,state.enPassant,state.turn);renderBoard();return}state.selected=null;state.validMoves=[]}else{if(p&&p[0]===state.turn){state.selected=[r,c];state.validMoves=getValidMoves(state.board,r,c,state.castling,state.enPassant,state.turn);renderBoard();return}}state.selected=null;state.validMoves=[];renderBoard()}
+
+function applyMove(fr,fc,move){const p=state.board[fr][fc];const captured=state.board[move.r][move.c];state.lastFrom=[fr,fc];state.lastTo=[move.r,move.c];const files='abcdefgh';let san='';if(move.castle==='K')san='O-O';else if(move.castle==='Q')san='O-O-O';else if(pieceType(p)==='P'){if(move.c!==fc)san+=files[fc];if(captured||move.enPassant)san+='x';san+=files[move.c]+(8-move.r);if(move.r===0||move.r===7)san+='=Q'}else{san+=pieceType(p);if(captured)san+='x';san+=files[move.c]+(8-move.r)}if(captured){if(state.turn==='w')state.capturedByWhite.push(pieceType(captured));else state.capturedByBlack.push(pieceType(captured))}if(move.enPassant){state.board[fr][move.c]=null;if(state.turn==='w')state.capturedByWhite.push('P');else state.capturedByBlack.push('P')}state.board=applyMoveToBoard(state.board,fr,fc,move);if(pieceType(p)==='K'){state.castling[state.turn+'K']=false;state.castling[state.turn+'Q']=false}if(fr===0&&fc===0)state.castling.bQ=false;if(fr===0&&fc===7)state.castling.bK=false;if(fr===7&&fc===0)state.castling.wQ=false;if(fr===7&&fc===7)state.castling.wK=false;state.enPassant=move.doublePush?{r:(fr+move.r)/2,c:fc}:null;state.moveHistory.push({fr,fc,move,san,turn:state.turn});state.turn=state.turn==='w'?'b':'w';state.selected=null;state.validMoves=[];const opp=state.turn;const inCheck=isKingInCheck(state.board,opp);const hasMoves=hasAnyMoves(state.board,opp,state.castling,state.enPassant);if(inCheck){const k=findKing(state.board,opp);state.checkKing=k;if(!hasMoves){const winner=opp==='w'?'Black':'White';setTimeout(()=>endGame(winner+' wins by Checkmate!','♚'),100)}}else{state.checkKing=null;if(!hasMoves)setTimeout(()=>endGame('Stalemate — Draw!','½'),100)}renderBoard();renderHistory();updateStatus();updateEval();if(!state.gameOver&&state.mode==='ai'&&state.turn==='b'){state.aiThinking=true;updateStatus();const diff=parseInt(document.getElementById('difficulty').value);setTimeout(()=>{const aiMove=getAIMove(state.board,diff,state.castling,state.enPassant);if(aiMove&&!state.gameOver)applyMove(aiMove.fr,aiMove.fc,aiMove.move);state.aiThinking=false},diff>4?800:400)}}
+
+function updateStatus(){const el=document.getElementById('game-status');if(state.gameOver){el.className='game-status status-over';return}const who=state.turn==='w'?'White':'Black';if(state.aiThinking){el.textContent='AI is thinking...';el.className='game-status status-playing';return}if(state.checkKing){el.textContent=who+' is in check!';el.className='game-status status-check'}else{el.textContent=who+' to move';el.className='game-status status-playing'}}
+
+function updateEval(){if(!state.board)return;const score=evalBoard(state.board);const clamped=Math.max(-1000,Math.min(1000,score));const pct=50+clamped/20;document.getElementById('eval-fill').style.width=Math.max(5,Math.min(95,pct))+'%';document.getElementById('eval-text').textContent=(score>0?'+':'')+Math.round(score/100*10)/10;const msgs=['Position is roughly equal.','White has a slight advantage. Improve piece activity.','Black is slightly better. Watch king safety.','White is winning. Find the tactical shot!','Black is winning. Look for counterplay.'];const ab=document.getElementById('analysis-box');ab.textContent=score>200?msgs[3]:score<-200?msgs[4]:score>50?msgs[1]:score<-50?msgs[2]:msgs[0]}
+
+function renderHistory(){const el=document.getElementById('move-history');el.innerHTML='';for(let i=0;i<state.moveHistory.length;i+=2){const div=document.createElement('div');div.className='move-pair';const num=document.createElement('span');num.className='move-num';num.textContent=(i/2+1)+'.';div.appendChild(num);const w=document.createElement('span');w.className='move-san'+(i===state.moveHistory.length-1?' current':'');w.textContent=state.moveHistory[i].san;div.appendChild(w);if(state.moveHistory[i+1]){const b=document.createElement('span');b.className='move-san'+(i+1===state.moveHistory.length-1?' current':'');b.textContent=state.moveHistory[i+1].san;div.appendChild(b)}el.appendChild(div)}el.scrollTop=el.scrollHeight}
+
+function endGame(msg,icon){state.gameOver=true;clearInterval(state.timerInterval);document.getElementById('game-status').textContent=msg;document.getElementById('game-status').className='game-status status-over';const isWin=msg.includes('White wins');const isDraw=msg.includes('Draw')||msg.includes('Stalemate');if(!isDraw){if(isWin){state.wins++;state.rating+=15}else{state.losses++;state.rating-=10}state.games++}updateStats();setTimeout(()=>{showModal(icon||'♛',msg,isWin?'Excellent play! Your rating increased to '+state.rating:isDraw?'A hard-fought draw. No rating change.':'Keep practicing! Your rating is now '+state.rating,[{label:'New Game',fn:'startNewGame()',primary:true},{label:'Analyze',fn:'analyzeWithAI()'},{label:'Close',fn:'closeModal()'}])},500)}
+
+function updateStats(){document.getElementById('stat-wins').textContent=state.wins;document.getElementById('stat-losses').textContent=state.losses;document.getElementById('stat-rating').textContent=state.rating;document.getElementById('stat-games').textContent=state.games}
+
+function flipBoard(){state.flipped=!state.flipped;renderBoard()}
+
+function undoMove(){if(state.moveHistory.length<1||state.gameOver)return;const count=state.mode==='ai'?2:1;for(let i=0;i<count;i++){if(!state.moveHistory.length)break;state.moveHistory.pop()}state.board=initBoard();state.castling={wK:true,wQ:true,bK:true,bQ:true};state.enPassant=null;state.turn='w';state.checkKing=null;state.lastFrom=null;state.lastTo=null;state.capturedByWhite=[];state.capturedByBlack=[];const hist=[...state.moveHistory];state.moveHistory=[];hist.forEach(h=>{applyMoveQuiet(h.fr,h.fc,h.move)});renderBoard();renderHistory();updateStatus()}
+
+function applyMoveQuiet(fr,fc,move){const p=state.board[fr][fc];const captured=state.board[move.r][move.c];if(captured){if(state.turn==='w')state.capturedByWhite.push(pieceType(captured));else state.capturedByBlack.push(pieceType(captured))}if(move.enPassant){state.board[fr][move.c]=null;if(state.turn==='w')state.capturedByWhite.push('P');else state.capturedByBlack.push('P')}state.board=applyMoveToBoard(state.board,fr,fc,move);if(pieceType(p)==='K'){state.castling[state.turn+'K']=false;state.castling[state.turn+'Q']=false}state.enPassant=move.doublePush?{r:(fr+move.r)/2,c:fc}:null;const files='abcdefgh';const san=move.castle==='K'?'O-O':move.castle==='Q'?'O-O-O':(pieceType(p)==='P'?(move.c!==fc?files[fc]:'')+(captured||move.enPassant?'x':'')+files[move.c]+(8-move.r):pieceType(p)+(captured?'x':'')+files[move.c]+(8-move.r));state.moveHistory.push({fr,fc,move,san,turn:state.turn});state.lastFrom=[fr,fc];state.lastTo=[move.r,move.c];state.turn=state.turn==='w'?'b':'w'}
+
+function resignGame(){if(state.gameOver)return;endGame('Black wins — White resigned','⚑')}
+
+async function analyzeWithAI(){const el=document.getElementById('coach-box');if(state.moveHistory.length<5){showToast('Play at least 5 moves first!');return}el.innerHTML='<div class="coach-header"><span>✦</span> Analyzing...</div><div style="color:var(--text3);font-size:0.8rem">AI coach is reviewing your game...</div>';const moves=state.moveHistory.map((m,i)=>((i%2===0)?Math.floor(i/2+1)+'. ':'')+m.san).join(' ');try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:`You are a chess coach. Analyze this game briefly (2-3 sentences). Moves: ${moves}. Stats: ${state.wins}W/${state.losses}L. Give ONE specific tip about a critical moment and ONE improvement. Format: [Assessment]. [Specific feedback]. [Tip].`}]})});const data=await res.json();const text=data.content?.map(b=>b.text||'').join('')||'Keep studying openings and endgames!';el.innerHTML='<div class="coach-header"><span>✦</span> AI Coach Analysis</div>'+text}catch(e){el.innerHTML='<div class="coach-header"><span>✦</span> Coach Tip</div>After '+state.moveHistory.length+' moves, focus on piece coordination. Connect your rooks and keep your king safe.'}}
+
+const LB_DATA=[{name:'Aibek Seitkali',city:'Almaty',rating:2341,wins:847,streak:12,avatar:'AS',color:'#c9a84c'},{name:'Dinara Bekova',city:'Almaty',rating:2298,wins:723,streak:8,avatar:'DB',color:'#7c3aed'},{name:'Ruslan Akhmetov',city:'Nur-Sultan',rating:2265,wins:691,streak:5,avatar:'RA',color:'#2563eb'},{name:'Zarina Tulegenova',city:'Almaty',rating:2231,wins:612,streak:15,avatar:'ZT',color:'#dc2626'},{name:'Nurlan Ospanov',city:'Shymkent',rating:2198,wins:589,streak:3,avatar:'NO',color:'#059669'},{name:'Aliya Kozhanova',city:'Almaty',rating:2176,wins:541,streak:7,avatar:'AK',color:'#d97706'},{name:'Timur Dzhaksybekov',city:'Nur-Sultan',rating:2154,wins:512,streak:4,avatar:'TD',color:'#7c3aed'},{name:'Saltanat Ergali',city:'Shymkent',rating:2132,wins:498,streak:11,avatar:'SE',color:'#be185d'},{name:'Kanat Suleimenov',city:'Almaty',rating:2118,wins:467,streak:2,avatar:'KS',color:'#0891b2'},{name:'Madina Yesmagambetova',city:'Nur-Sultan',rating:2095,wins:445,streak:6,avatar:'MY',color:'#65a30d'}];
+
+function filterLB(filter,btn){document.querySelectorAll('.lb-filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');let data=LB_DATA;if(filter==='almaty')data=LB_DATA.filter(p=>p.city==='Almaty');else if(filter==='nur-sultan')data=LB_DATA.filter(p=>p.city==='Nur-Sultan');else if(filter==='shymkent')data=LB_DATA.filter(p=>p.city==='Shymkent');else if(filter==='weekly')data=[...LB_DATA].sort(()=>Math.random()-0.5).slice(0,7);renderLB(data)}
+
+function renderLB(data){const tb=document.getElementById('lb-body');tb.innerHTML='';data.forEach((p,i)=>{const tr=document.createElement('tr');tr.className='lb-row';const rankClass=i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';const medals=['🥇','🥈','🥉'];tr.innerHTML=`<td class="lb-rank ${rankClass}">${i<3?medals[i]:i+1}</td><td><div class="lb-player"><div class="lb-avatar" style="background:${p.color}20;color:${p.color};border-color:${p.color}40">${p.avatar}</div><span>${p.name}</span></div></td><td class="lb-city">${p.city}</td><td class="lb-rating">${p.rating}</td><td>${p.wins}</td><td class="lb-streak">${p.streak>5?'🔥':''} ${p.streak} games</td>`;tb.appendChild(tr)})}
+
+function showPage(page){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));document.getElementById(page+'-page').classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>{if(b.textContent.toLowerCase().includes(page.substring(0,4)))b.classList.add('active')});if(page==='leaderboard')renderLB(LB_DATA);if(page==='play'&&!state.board)startNewGame()}
+
+function setMode(mode,btn){state.mode=mode;btn.closest('.mode-btns').querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.getElementById('ai-settings').style.display=mode==='ai'?'block':'none';document.getElementById('link-section').style.display=mode==='link'?'block':'none';document.getElementById('black-name').textContent=mode==='ai'?'AI Opponent':mode==='link'?'Waiting for opponent...':'Player 2';document.getElementById('black-rating').textContent=mode==='ai'?'1800':'??'}
+
+function setTime(secs,btn){state.timeControl=secs;btn.closest('.mode-btns').querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active')}
+
+function showModal(icon,title,sub,btns){document.getElementById('modal-icon').textContent=icon;document.getElementById('modal-title').textContent=title;document.getElementById('modal-sub').textContent=sub;const bc=document.getElementById('modal-btns');bc.innerHTML='';btns.forEach(b=>{const btn=document.createElement('button');btn.className='modal-btn '+(b.primary?'primary':'secondary');btn.textContent=b.label;btn.onclick=new Function(b.fn);bc.appendChild(btn)});document.getElementById('modal-overlay').classList.remove('hidden')}
+
+function closeModal(){document.getElementById('modal-overlay').classList.add('hidden')}
+
+function showProModal(){showModal('✦','GrandMaster Pro','',[]); document.getElementById('modal-sub').innerHTML='Unlock the full chess experience<ul class="pro-features" style="margin-top:0.75rem"><li>Unlimited AI coach sessions</li><li>Custom piece & board skins</li><li>Advanced game analysis</li><li>Priority matchmaking</li><li>Voice commentary</li><li>Download PGN files</li></ul>';const bc=document.getElementById('modal-btns');bc.innerHTML='';const b1=document.createElement('button');b1.className='modal-btn primary';b1.textContent='Start Free Trial — $9/mo';b1.onclick=()=>{closeModal();showToast('Redirecting to checkout...')};bc.appendChild(b1);const b2=document.createElement('button');b2.className='modal-btn secondary';b2.textContent='Maybe Later';b2.onclick=closeModal;bc.appendChild(b2)}
+
+function copyLink(){navigator.clipboard.writeText('https://grandmaster.app/g/xyz7k2').catch(()=>{});showToast('Link copied to clipboard!')}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+
+showPage('home');
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal()});
+</script>
+</body>
+</html>
